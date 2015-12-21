@@ -1,0 +1,7 @@
+netCDF4==1.1.4.1
+numpy==1.9.1
+pygc==0.2
+pygeoif==0.4.1
+python-dateutil==2.4.0
+pytz==2015.4
+requests==2.5.0
