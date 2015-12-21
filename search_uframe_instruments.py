@@ -5,7 +5,7 @@ import json
 import os
 import sys
 import datetime
-from uframe.api import UFrame
+from UFrame.api import UFrame
 
 def main(args):
     '''Return the fully qualified reference designator list for all instruments
