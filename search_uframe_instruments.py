@@ -47,9 +47,9 @@ def main(args):
         sys.stderr.write('Complete ({:d} seconds)\n'.format(dt.seconds))
     
     if (args.reference_designator):
-        instruments = uframe.search_ref_des(args.reference_designator)
+        instruments = uframe.search_instruments(args.reference_designator)
     else:
-        instruments = uframe.reference_designators
+        instruments = uframe.instruments
         
     if args.json:
         json.dumps(instruments)

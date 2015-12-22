@@ -4,7 +4,7 @@ import argparse
 import os
 import sys
 import datetime
-from UFrame.api import UFrame
+from UFrame import UFrame
 
 def main(args):
     '''Return the list of request urls that conform to the UFrame API for the 
@@ -46,9 +46,9 @@ def main(args):
         sys.stderr.write('Complete ({:d} seconds)\n'.format(dt.seconds))
     
     if (args.reference_designator):
-        instruments = uframe.search_ref_des(args.reference_designator)
+        instruments = uframe.search_instruments(args.reference_designator)
     else:
-        instruments = uframe.reference_designators
+        instruments = uframe.instruments
         
     if not instruments:
         sys.stderr.write('No instruments found for reference designator: {:s}\n'.format(args.reference_designator))
@@ -57,7 +57,7 @@ def main(args):
     urls = []    
     for instrument in instruments:
         
-        request_urls = uframe.ref_des_to_query(instrument,
+        request_urls = uframe.instrument_to_query(instrument,
             telemetry=args.telemetry,
             time_delta_type=args.time_delta_type,
             time_delta_value=args.time_delta_value,
@@ -119,7 +119,6 @@ if __name__ == '__main__':
     arg_parser.add_argument('-l', '--limit',
         type=int,
         default=-1,
-        choices=range(-1,10000),
         help='Integer ranging from -1 to 10000.  <Default:-1> results in a non-decimated dataset')
     arg_parser.add_argument('-b', '--baseurl',
         dest='base_url',
