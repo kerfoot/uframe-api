@@ -73,16 +73,7 @@ class UFrame(object):
         if r.status_code != HTTP_STATUS_OK:
             sys.stderr.write('Invalid UFrame instance: {:s} (Reason={:s})\n'.format(url, r.message))
             sys.stderr.flush()
-            return
-        
-        # Try to jump the response as json    
-        try:
-            data = r.json()
-        except ValueError as e:
-            sys.stderr.write('{:s}\n'.format(e.message))
-            sys.stderr.flush()
-            return
-
+            returnfr
             
         # Store the base url    
         self._base_url = url
