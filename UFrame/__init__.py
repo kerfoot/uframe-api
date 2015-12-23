@@ -38,6 +38,7 @@ class UFrame(object):
             base_url = os.getenv('UFRAME_BASE_URL')
         
         # UFrame configuration
+        self._url = None
         self._port = port
         self._timeout = timeout
         
@@ -57,25 +58,21 @@ class UFrame(object):
     def base_url(self, url):
         if not url:
             sys.stderr.write('No base_url specified\n')
+            sys.stderr.flush()
             return
-        
-        # Store the base url    
-        self._base_url = url
-        # Create the data services url
-        self._url = '{:s}:{:d}/sensor/inv'.format(self.base_url, self.port)
         
         # Send the base url request to see if this is a valid uframe instance
         try:
-            r = requests.get(self._url, timeout=self._timeout)
+            r = requests.get(url)
         except requests.RequestException as e:
-            sys.stderr.write('{:s} ({:s})\n'.format(e.message, type(e)))
-            self.base_url = None
+            sys.stderr.write('Invalid UFrame instance: {:s} (Reason={:s})\n'.format(url, e.message))
+            sys.stderr.flush()
             return
             
         # Should get a 200 server response
         if r.status_code != HTTP_STATUS_OK:
-            sys.stderr.write('Invalid UFrame instance: {:s} (Reason={:s})\n'.format(self._url, r.message))
-            self.base_url = None
+            sys.stderr.write('Invalid UFrame instance: {:s} (Reason={:s})\n'.format(url, r.message))
+            sys.stderr.flush()
             return
         
         # Try to jump the response as json    
@@ -83,8 +80,14 @@ class UFrame(object):
             data = r.json()
         except ValueError as e:
             sys.stderr.write('{:s}\n'.format(e.message))
-            self.base_url = None
+            sys.stderr.flush()
             return
+
+            
+        # Store the base url    
+        self._base_url = url
+        # Create the data services url
+        self._url = '{:s}:{:d}/sensor/inv'.format(self.base_url, self.port)
 
     @property
     def port(self):
@@ -470,5 +473,8 @@ class UFrame(object):
         return arrays
             
     def __repr__(self):
-        return '<UFrame(url={:s})>'.format(self.url)
+        if self._url:
+            return '<UFrame(url={:s})>'.format(self.url)
+        else:
+            return '<UFrame(url=None)>'
 
