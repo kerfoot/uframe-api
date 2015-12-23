@@ -126,7 +126,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('-t', '--timeout',
         type=int,
         default=120,
-        help='Specify the timeout, in seconds (Default is 120 seconds).')
+        help='Specify the timeout, in seconds <Default:120>')
     arg_parser.add_argument('-v', '--verbose',
         action='store_true',
         help='Verbose display')
