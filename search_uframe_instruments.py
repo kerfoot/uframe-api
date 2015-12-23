@@ -9,10 +9,7 @@ from UFrame import UFrame
 
 def main(args):
     '''Return the fully qualified reference designator list for all instruments
-    contained in the specified UFrame instance.
-    
-    A search string (-r SEARCH_STRING) may also be specified to restrict results to those matching
-    all or part of the search string.'''
+    if no partial or fully-qualified reference_designator is specified.'''
     
     status = 0
     
@@ -62,8 +59,9 @@ def main(args):
 if __name__ == '__main__':
 
     arg_parser = argparse.ArgumentParser(description=main.__doc__)
-    arg_parser.add_argument('-r', '--reference_designator',
-        help='Name of the array to fetch')
+    arg_parser.add_argument('reference_designator',
+        nargs='?',
+        help='Name of the instrument to search')
     arg_parser.add_argument('-j', '--json',
         dest='json',
         action='store_true',
