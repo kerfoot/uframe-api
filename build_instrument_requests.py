@@ -94,6 +94,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('--time_delta_type',
         help='Type for calculating the subset start time, i.e.: years, months, weeks, days.  Must be a type kwarg accepted by dateutil.relativedelta')
     arg_parser.add_argument('--time_delta_value',
+        type=int,
         help='Positive integer value to subtract from the end time to get the start time for subsetting.')
     arg_parser.add_argument('--no_time_check',
         dest='time_check',
