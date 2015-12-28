@@ -31,7 +31,9 @@ def main(args):
     if args.verbose:
         sys.stderr.write('Creating UFrame API instance\n')
          
-    uframe = UFrame(base_url=base_url, timeout=args.timeout)
+    uframe = UFrame(base_url=base_url,
+        timeout=args.timeout,
+        validate=args.validate_uframe)
     
     # Fetch the table of contents from UFrame
     if args.verbose:
@@ -135,6 +137,9 @@ if __name__ == '__main__':
         dest='user',
         type=str,
         help='Add a user name to the query')
+    arg_parser.add_argument('--validate_uframe',
+        action='store_true',
+        help='Attempt to validate the UFrame instance <Default:False>')
     arg_parser.add_argument('--email',
         dest='email',
         type=str,

@@ -33,7 +33,7 @@ class UFrame(object):
         timeout: timeout duration (Default is 120 seconds)
     '''
     
-    def __init__(self, base_url=None, port=12576, timeout=120):
+    def __init__(self, base_url=None, port=12576, timeout=120, validate=False):
         if not base_url:
             base_url = os.getenv('UFRAME_BASE_URL')
         
@@ -41,6 +41,7 @@ class UFrame(object):
         self._url = None
         self._port = port
         self._timeout = timeout
+        self._validate_uframe = validate
         
         # Table of contents
         self._toc = []
@@ -62,18 +63,19 @@ class UFrame(object):
             return
         
         # Send the base url request to see if this is a valid uframe instance
-        try:
-            r = requests.get(url)
-        except requests.RequestException as e:
-            sys.stderr.write('Invalid UFrame instance: {:s} (Reason={:s})\n'.format(url, e.message))
-            sys.stderr.flush()
-            return
-            
-        # Should get a 200 server response
-        if r.status_code != HTTP_STATUS_OK:
-            sys.stderr.write('Invalid UFrame instance: {:s} (Reason={:s})\n'.format(url, r.message))
-            sys.stderr.flush()
-            returnfr
+        if self._validate_uframe:
+            try:
+                r = requests.get(url)
+            except requests.RequestException as e:
+                sys.stderr.write('Invalid UFrame instance: {:s} (Reason={:s})\n'.format(url, e.message))
+                sys.stderr.flush()
+                return
+                
+            # Should get a 200 server response
+            if r.status_code != HTTP_STATUS_OK:
+                sys.stderr.write('Invalid UFrame instance: {:s} (Reason={:s})\n'.format(url, r.message))
+                sys.stderr.flush()
+                return
             
         # Store the base url    
         self._base_url = url

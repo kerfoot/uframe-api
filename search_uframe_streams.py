@@ -30,7 +30,9 @@ def main(args):
     if args.verbose:
         sys.stderr.write('Creating UFrame API instance\n')
          
-    uframe = UFrame(base_url=base_url, timeout=args.timeout)
+    uframe = UFrame(base_url=base_url,
+        timeout=args.timeout,
+        validate=args.validate_uframe)
     
     # Fetch the table of contents from UFrame
     if args.verbose:
@@ -73,6 +75,9 @@ if __name__ == '__main__':
     arg_parser.add_argument('-v', '--verbose',
         action='store_true',
         help='Verbose display')
+    arg_parser.add_argument('--validate_uframe',
+        action='store_true',
+        help='Attempt to validate the UFrame instance <Default:False>')
 
     parsed_args = arg_parser.parse_args()
 
