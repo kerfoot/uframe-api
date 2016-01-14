@@ -2,8 +2,16 @@
 
 Collection of scripts for interacting directly with the Ocean Observatories Intiative UFrame webservices API
 
-#External Dependencies
-+ [UFrame Class](https://github.com/kerfoot/uframe)
-+ [External Packages](https://github.com/kerfoot/uframe-api/blob/master/requirements.txt)
+#Contents
++ [Installation](#installation)
++ [API](#api)
 
+##Installation
+    > git clone https://github.com/kerfoot/uframe-api.git
+    > pip install --requirement requirements.txt
+    
+##API
++ [Wiki]()
++ [UFrame Class]()
++ [Utilities]()
 
