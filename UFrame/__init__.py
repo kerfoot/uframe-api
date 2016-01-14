@@ -45,6 +45,7 @@ class UFrame(object):
         
         # Table of contents
         self._toc = []
+        self._arrays = []
         self._instruments = []
         self._parameters = []
         self._streams = []
@@ -116,11 +117,16 @@ class UFrame(object):
     @property
     def streams(self):
         return self._streams
+        
+    @property
+    def arrays(self):
+        return self._arrays
           
     def fetch_toc(self):
-        '''Fetch the list of available instruments, as specified by the fully-qualified
-        reference designator.  Returns a dictionary mapping the reference designator
-        to the instrument's metadata record'''
+        '''Fetch the response from the UFrame table of contents end point and create
+        a data structure containing the streams and instruments from the Uframe instance.
+        This should be the first method you call once you point the UFrame instance
+        at a URL.'''
         
         self._port = 12576
         self._url = '{:s}:{:d}/sensor/inv/toc'.format(self._base_url, self._port)
@@ -174,6 +180,11 @@ class UFrame(object):
         streams.sort()        
         self._parameters = parameters
         self._streams = streams
+        
+        # Create a dict of unique array names
+        arrays = {t.split('-')[0]:True for t in self._toc.keys()}.keys()
+        arrays.sort()
+        self._arrays = arrays
     
     def validate_reference_designator(self, reference_designator):
         '''Validates the reference designator'''
@@ -223,7 +234,7 @@ class UFrame(object):
         else:
             return [p['particleKey'] for p in self._parameters if p['particleKey'].find(target_string) >= 0]
     
-    def search_streams(self, target_stream):
+    def search_streams(self, target_array):
         '''Returns a the list of all streams containing the target_stream fragment
         
         Parameters:
@@ -235,6 +246,21 @@ class UFrame(object):
             return []
             
         return [s for s in self._streams if s.find(target_stream) >= 0]
+        
+    def search_arrays(self, target_array):
+        
+        arrays = []
+        
+        if not self._toc:
+            sys.stderr.write('You must fetch the table of contents first\n')
+            sys.stderr.flush()
+            return arrays
+            
+        # Create a dict of unique array names
+        arrays = [a for a in self._arrays if a.find(target_array) >= 0]
+        arrays.sort()
+        
+        return arrays
         
     def stream_to_instrument(self, target_stream):
         '''Returns a the list of all instrument reference designators producing
@@ -411,12 +437,12 @@ class UFrame(object):
                         sys.stderr.write('time_check: Setting request end time to stream endTime\n')
                         sys.stderr.flush()
                         dt1 = stream_dt1
-                        continue
+                        #continue
                     
                     if dt0 < stream_dt0:
                         sys.stderr.write('time_check: Start time is earlier than stream beginTime ({:s} < {:s})\n'.format(ts0, stream['beginTime']))
                         sys.stderr.write('time_check: Setting request begin time to stream beginTime\n')
-                        continue
+                        #continue
                         
                 # Create the url
                 stream_url = '{:s}/{:s}/{:s}/{:s}-{:s}/{:s}/{:s}?beginDT={:s}&endDT={:s}&format=application/{:s}&limit={:d}&execDPA={:s}&include_provenance={:s}'.format(
@@ -443,27 +469,6 @@ class UFrame(object):
                 urls.append(stream_url)
                             
         return urls
-    
-    def get_arrays(self, array_id=None):
-        
-        arrays = []
-        
-        if not self._toc:
-            sys.stderr.write('You must fetch the table of contents first\n')
-            sys.stderr.flush()
-            return arrays
-            
-        # Create a dict of unique array names
-        arrays = {t.split('-')[0]:True for t in self._toc.keys()}.keys()
-        arrays.sort()
-        
-        if array_id:
-            if array_id in arrays:
-                return [array_id]
-            else:
-                return []
-        
-        return arrays
             
     def __repr__(self):
         if self._url:
