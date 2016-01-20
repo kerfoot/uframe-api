@@ -11,7 +11,7 @@ Collection of scripts for interacting directly with the Ocean Observatories Inti
     > pip install --requirement requirements.txt
     
 ##API
-+ [Wiki]()
++ [Wiki](https://github.com/kerfoot/uframe-api/wiki)
 + [UFrame Class]()
-+ [Utilities]()
++ [Utilities](https://github.com/kerfoot/uframe-api/wiki/Command-Line-Utilities)
 
