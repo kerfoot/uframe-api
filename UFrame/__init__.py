@@ -375,7 +375,7 @@ class UFrame(object):
                 
         if end_ts:
             try:
-                end_dt = parser.parse(begin_ts)
+                end_dt = parser.parse(end_ts)
             except ValueError as e:
                 sys.stderr.write('Invalid end_dt: {:s} ({:s})\n'.format(end_ts, e.message))
                 sys.stderr.flush()
@@ -436,14 +436,20 @@ class UFrame(object):
                         sys.stderr.write('time_check: End time exceeds stream endTime ({:s} > {:s})\n'.format(ts1, stream['endTime']))
                         sys.stderr.write('time_check: Setting request end time to stream endTime\n')
                         sys.stderr.flush()
-                        dt1 = stream_dt1
-                        #continue
+                        ts1 = stream['endTime']
                     
                     if dt0 < stream_dt0:
                         sys.stderr.write('time_check: Start time is earlier than stream beginTime ({:s} < {:s})\n'.format(ts0, stream['beginTime']))
                         sys.stderr.write('time_check: Setting request begin time to stream beginTime\n')
-                        #continue
-                        
+                        ts0 = stream['beginTime']
+                       
+                # Check that ts0 < ts1
+                dt0 = parser.parse(ts0)
+                dt1 = parser.parse(ts1)
+                if dt0 >= dt1:
+                    sys.stderr.write('{:s}: Invalid time range specified ({:s} >= {:s})\n'.format(stream['stream'], ts0, ts1))
+                    continue
+
                 # Create the url
                 stream_url = '{:s}/{:s}/{:s}/{:s}-{:s}/{:s}/{:s}?beginDT={:s}&endDT={:s}&format=application/{:s}&limit={:d}&execDPA={:s}&include_provenance={:s}'.format(
                     self.url,
