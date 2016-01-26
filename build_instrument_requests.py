@@ -9,8 +9,8 @@ from UFrame import UFrame
 def main(args):
     '''Return the list of request urls that conform to the UFrame API for the 
         partial or fully-qualified reference_designator and all telemetry types.  
-        The URLs request all stream L0 dataset parameters over the entire 
-        time-coverage.  The urls are printed to STDOUT
+        The URLs request all stream L0, L1 and L2 dataset parameters over the entire 
+        time-coverage.  The urls are printed to STDOUT.
     '''
     
     status = 0
