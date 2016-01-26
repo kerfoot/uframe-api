@@ -9,9 +9,11 @@ import requests
 import sys
 import os
 import datetime
+import time
 import re
 from dateutil import parser
 from dateutil.relativedelta import relativedelta as tdelta
+from pytz import timezone
 
 HTTP_STATUS_OK = 200
 
@@ -49,6 +51,10 @@ class UFrame(object):
         self._instruments = []
         self._parameters = []
         self._streams = []
+        
+        # Events
+        self._events = []
+        self._event_types = []
         
         # Set the base_url
         self.base_url = base_url
@@ -121,7 +127,92 @@ class UFrame(object):
     @property
     def arrays(self):
         return self._arrays
-          
+    
+    def fetch_events(self):
+        '''Fetch the events catalog from the specified UFrame instance.  This method
+        must be called before any subsequent calls to events methods.'''
+        
+        self._port = 12573
+        self._url = '{:s}:{:d}/events'.format(self._base_url, self._port)
+        
+        try:
+            r = requests.get(self._url)
+        except requests.RequestException as e:
+            sys.stderr.write('{:s} ({:s})\n'.format(e.message, type(e)))
+            return
+            
+        if r.status_code != HTTP_STATUS_OK:
+            sys.stderr.write('Failed to fetch TOC: {:s}\n'.format(r.message))
+            return
+            
+        try:
+            events_response = r.json()
+        except ValueError as e:
+            sys.stderr.write('{:s}\n'.format(e.message))
+            return
+            
+        # Store all fetched events
+        self._events = events_response
+        
+        # Store the event types
+        self._event_types = {e['@class']:True for e in self._events}.keys()
+
+    # Events methods
+    @property
+    def event_types(self):
+        
+        return self._event_types
+        
+    def search_events_by_type(self, event_type):
+        '''Return all events of type event_type'''
+        
+        if not self._events:
+            sys.stderr.write('No events fetched.')
+            return
+            
+        return [e for e in self._events if e['@class'].find(event_type) > -1]
+        
+    def search_deployment_events(self, ref_des, tense=None):
+        '''Return the list of all deployment events that contain the specified
+        ref_des string, which may be a partial or fully-qualified reference designator
+        identifying the subsite, node or sensor.  An optional keyword argument, tense,
+        may be set to PRESENT or PAST to return only current or recovered events,
+        respectively.'''
+        
+        if not self._events:
+            sys.stderr.write('No events fetched.')
+            return
+            
+        d = self.search_events_by_type('.DeploymentEvent')
+        
+        if not d:
+            return d
+            
+        if not tense:
+            return [e for e in d if '{:s}-{:s}-{:s}'.format(e['referenceDesignator']['subsite'], e['referenceDesignator']['node'], e['referenceDesignator']['sensor']).find(ref_des) > -1]
+        else:
+            return [e for e in d if e['tense'].find(tense.upper()) > -1 and '{:s}-{:s}-{:s}'.format(e['referenceDesignator']['subsite'], e['referenceDesignator']['node'], e['referenceDesignator']['sensor']).find(ref_des) > -1]
+            
+    def search_deployment_events_by_instrument(self, instrument, tense=None):
+        '''Return the list of all deployment events of the specified instrument, 
+        which may be a partial or fully-qualified reference designator
+        identifying the instrument.  Results are restricted to instrument only.
+        An optional keyword argument, tense, may be set to PRESENT or PAST to return 
+        only current or recovered events, respectively.'''
+        
+        if not self._events:
+            sys.stderr.write('No events fetched.')
+            return
+        d = self.search_events_by_type('.DeploymentEvent')
+        
+        if not d:
+            return d
+            
+        if not tense:
+            return [e for e in d if e['referenceDesignator']['full'] and '{:s}-{:s}-{:s}'.format(e['referenceDesignator']['subsite'], e['referenceDesignator']['node'], e['referenceDesignator']['sensor']).find(instrument) > -1]
+        else:
+            return [e for e in d if e['referenceDesignator']['full'] and e['tense'].find(tense.upper()) > -1 and '{:s}-{:s}-{:s}'.format(e['referenceDesignator']['subsite'], e['referenceDesignator']['node'], e['referenceDesignator']['sensor']).find(instrument) > -1]
+
     def fetch_toc(self):
         '''Fetch the response from the UFrame table of contents end point and create
         a data structure containing the streams and instruments from the Uframe instance.
@@ -433,14 +524,14 @@ class UFrame(object):
                 # the stream metadata times if time_check=True
                 if time_check:
                     if dt1 > stream_dt1:
-                        sys.stderr.write('time_check: End time exceeds stream endTime ({:s} > {:s})\n'.format(ts1, stream['endTime']))
-                        sys.stderr.write('time_check: Setting request end time to stream endTime\n')
+                        sys.stderr.write('time_check ({:s}): End time exceeds stream endTime ({:s} > {:s})\n'.format(stream['stream'], ts1, stream['endTime']))
+                        sys.stderr.write('time_check ({:s}): Setting request end time to stream endTime\n'.format(stream['stream']))
                         sys.stderr.flush()
                         ts1 = stream['endTime']
                     
                     if dt0 < stream_dt0:
-                        sys.stderr.write('time_check: Start time is earlier than stream beginTime ({:s} < {:s})\n'.format(ts0, stream['beginTime']))
-                        sys.stderr.write('time_check: Setting request begin time to stream beginTime\n')
+                        sys.stderr.write('time_check ({:s}): Start time is earlier than stream beginTime ({:s} < {:s})\n'.format(stream['stream'], ts0, stream['beginTime']))
+                        sys.stderr.write('time_check ({:s}): Setting request begin time to stream beginTime\n'.format(stream['stream']))
                         ts0 = stream['beginTime']
                        
                 # Check that ts0 < ts1
@@ -475,7 +566,83 @@ class UFrame(object):
                 urls.append(stream_url)
                             
         return urls
+    
+    def instrument_to_deployment_query(self, ref_des, deployment_number=0, tense=None, telemetry=None, begin_ts=None, end_ts=None, time_check=True, exec_dpa=True, application_type='netcdf', provenance=True, limit=-1, annotations=False, user=None, email=None):
+        
+        urls = []
+        
+        if not self._events:
+            sys.stderr.write('No events fetched.')
+            return urls
             
+        # Get the deployment events for the specified instrument(s)
+        deployment_events = self.search_deployment_events_by_instrument(ref_des, tense)
+        
+        if not deployment_events:
+            return urls
+            
+        for d in deployment_events:
+            
+            if deployment_number and d['deploymentNumber'] != deployment_number:
+                continue
+                
+            # Create the fully-qualified reference designator corresponding to this
+            # instrument
+            ref_des = '{:s}-{:s}-{:s}'.format(d['referenceDesignator']['subsite'], d['referenceDesignator']['node'], d['referenceDesignator']['sensor'])
+            # Format startDate and endDate to UFrame compatible strings
+            if not d['startDate']:
+                sys.stderr.write('{:s}: No deployment startDate from DeploymentEvent\n'.format(ref_des))
+                continue
+                
+            t0 = time.gmtime(d['startDate']/1000)
+            dt0 = datetime.datetime(t0.tm_year,
+                t0.tm_mon,
+                t0.tm_mday,
+                t0.tm_hour,
+                t0.tm_min,
+                t0.tm_sec,
+                0,
+                timezone('UTC'))
+            ts0 = dt0.strftime('%Y-%m-%dT%H:%M:%S.%sZ')
+
+            # End date
+            if not d['endDate']:
+                ts1 = None
+            else:
+                t1 = time.gmtime(d['endDate']/1000)
+                dt1 = datetime.datetime(t1.tm_year,
+                    t1.tm_mon,
+                    t1.tm_mday,
+                    t1.tm_hour,
+                    t1.tm_min,
+                    t1.tm_sec,
+                    0,
+                    timezone('UTC'))
+                ts1 = dt1.strftime('%Y-%m-%dT%H:%M:%S.%sZ')
+                
+            # Create the queries
+            instrument_urls = self.instrument_to_query(ref_des,
+                telemetry=telemetry, 
+                begin_ts=ts0, 
+                end_ts=ts1,
+                time_check=time_check,
+                exec_dpa=exec_dpa,
+                application_type=application_type, 
+                provenance=provenance, 
+                limit=limit, 
+                annotations=annotations, 
+                user=user, 
+                email=email)
+                
+            if not instrument_urls:
+                sys.stderr.write('{:s}: No queries created\n'.format(ref_des))
+                continue
+                
+            for url in instrument_urls:
+                urls.append(url)
+                
+        return urls
+
     def __repr__(self):
         if self._url:
             return '<UFrame(url={:s})>'.format(self.url)
