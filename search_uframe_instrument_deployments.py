@@ -43,13 +43,17 @@ def main(args):
         
     uframe.fetch_events()
     
+    # Set args.tense to None if not either 'past' or 'present'
+    if args.tense.lower() not in ['past', 'present']:
+        args.tense = None
+    
     if args.verbose:
         t1 = datetime.datetime.utcnow()
         dt = t1 - t0
         sys.stderr.write('Complete ({:d} seconds)\n'.format(dt.seconds))
     
     status = 1
-    deployments = uframe.search_deployment_events_by_instrument(args.reference_designator)
+    deployments = uframe.search_deployment_events_by_instrument(args.reference_designator, tense=args.tense)
         
     if args.json:
         json.dumps(deployments)
@@ -101,6 +105,10 @@ if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description=main.__doc__)
     arg_parser.add_argument('reference_designator',
         help='Name of the instrument to search')
+    arg_parser.add_argument('--tense',
+        type=str,
+        default='all',
+        help='String specifying past or present deployments <Default:all>')
     arg_parser.add_argument('-j', '--json',
         dest='json',
         action='store_true',
