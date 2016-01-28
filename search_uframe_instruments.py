@@ -5,11 +5,14 @@ import json
 import os
 import sys
 import datetime
+import csv
 from UFrame import UFrame
 
 def main(args):
     '''Return the fully qualified reference designator list for all instruments
-    if no partial or fully-qualified reference_designator is specified.'''
+    if no partial or fully-qualified reference_designator is specified.  Specify
+    the -s or --streams option to include metadata for all streams produced by the
+    instrument(s)'''
     
     status = 0
     
@@ -45,13 +48,27 @@ def main(args):
         dt = t1 - t0
         sys.stderr.write('Complete ({:d} seconds)\n'.format(dt.seconds))
     
-    if (args.reference_designator):
-        instruments = uframe.search_instruments(args.reference_designator)
+    if args.reference_designator:
+        if args.streams:
+            instruments = uframe.instrument_to_streams(args.reference_designator)
+        else:
+            instruments = uframe.search_instruments(args.reference_designator)
     else:
         instruments = uframe.instruments
         
+    if not instruments:
+        sys.stderr.write('{:s}: No instrument matches found\n')
+        return status
+        
     if args.json:
-        json.dumps(instruments)
+        sys.stdout.write(json.dumps(instruments))
+    elif args.streams:
+        csv_writer = csv.writer(sys.stdout)
+        cols = instruments[0].keys()
+        cols.sort()
+        csv_writer.writerow(cols)
+        for instrument in instruments:
+            csv_writer.writerow([instrument[k] for k in cols])
     else:
         for instrument in instruments:
             sys.stdout.write('{:s}\n'.format(instrument))
@@ -64,10 +81,13 @@ if __name__ == '__main__':
     arg_parser.add_argument('reference_designator',
         nargs='?',
         help='Name of the instrument to search')
+    arg_parser.add_argument('-s', '--streams',
+        action='store_true',
+        help='Display metadata for all streams produced by the instrument')
     arg_parser.add_argument('-j', '--json',
         dest='json',
         action='store_true',
-        help='Return response as json.  Default is ascii text.')
+        help='Return response as json.  Default response is printed as comma-delimited ascii text.')
     arg_parser.add_argument('-b', '--baseurl',
         dest='base_url',
         help='Specify an alternate uFrame server URL. Must start with \'http://\'.  Value is taken from the UFRAME_BASE_URL environment variable, if set')

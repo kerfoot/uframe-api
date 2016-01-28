@@ -325,7 +325,7 @@ class UFrame(object):
         else:
             return [p['particleKey'] for p in self._parameters if p['particleKey'].find(target_string) >= 0]
     
-    def search_streams(self, target_array):
+    def search_streams(self, target_stream):
         '''Returns a the list of all streams containing the target_stream fragment
         
         Parameters:
@@ -397,6 +397,24 @@ class UFrame(object):
             streams = self._toc[instrument]['streams']
             
             for stream in streams:
+                
+                # Parse stream beginTime and endTime to create a unix timestamp, in milliseconds
+                stream_dt0 = parser.parse(stream['beginTime'])
+                stream_dt1 = parser.parse(stream['endTime'])
+                
+                # Format the endDT and beginDT values for the query
+                stream['beginTimeEpochMs'] = None
+                stream['endTimeEpochMs'] = None
+                try:
+                    stream['endTimeEpochMs'] = int(time.mktime(stream_dt1.timetuple()))*1000
+                except ValueError as e:
+                    sys.stderr.write('endTime conversion error: {:s}-{:s}: {:s}\n'.format(instrument, stream['stream'], e.message))
+
+                try:
+                    stream['beginTimeEpochMs'] = int(time.mktime(stream_dt0.timetuple()))*1000
+                except ValueError as e:
+                    sys.stderr.write('beginTime conversion error: {:s}-{:s}: {:s}\n'.format(instrument, stream['stream'], e.message))
+
                 ref_des_streams.append(stream)
                 
         return ref_des_streams
