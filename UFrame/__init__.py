@@ -517,8 +517,17 @@ class UFrame(object):
                         dt1 = stream_dt1
                 
                 # Format the endDT and beginDT values for the query
-                ts1 = dt1.strftime('%Y-%m-%dT%H:%M:%S.%fZ')    
-                ts0 = dt0.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+                try:
+                    ts1 = dt1.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+                except ValueError as e:
+                    sys.stderr.write('{:s}-{:s}: {:s}\n'.format(instrument, stream['stream'], e.message))
+                    continue
+
+                try:
+                    ts0 = dt0.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+                except ValueError as e:
+                    sys.stderr.write('{:s}-{:s}: {:s}\n'.format(instrument, stream['stream'], e.message))
+                    continue
                         
                 # Make sure the specified or calculated start and end time are within
                 # the stream metadata times if time_check=True
