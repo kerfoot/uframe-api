@@ -47,7 +47,7 @@ def main(args):
     if (args.array):
         arrays = uframe.search_arrays(args.array)
     else:
-        arrays = uframe._arrays
+        arrays = uframe.arrays
         
     if args.json:
         json.dumps(arrays)
@@ -82,5 +82,5 @@ if __name__ == '__main__':
         help='Verbose display')
 
     parsed_args = arg_parser.parse_args()
-
+    
     sys.exit(main(parsed_args))
