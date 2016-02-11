@@ -13,5 +13,5 @@ Collection of scripts for interacting directly with the Ocean Observatories Inti
 ##API
 + [Wiki](https://github.com/kerfoot/uframe-api/wiki)
 + [UFrame Class]()
-+ [Utilities](https://github.com/kerfoot/uframe-api/wiki/Command-Line-Utilities)
++ [Command-line Utilities](https://github.com/kerfoot/uframe-api/wiki/Command-Line-Utilities)
 
