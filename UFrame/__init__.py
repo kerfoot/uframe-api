@@ -127,6 +127,10 @@ class UFrame(object):
     @property
     def arrays(self):
         return self._arrays
+        
+    @property
+    def events(self):
+        return self._events
     
     def fetch_events(self):
         '''Fetch the events catalog from the specified UFrame instance.  This method
