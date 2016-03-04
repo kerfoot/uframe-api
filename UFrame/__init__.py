@@ -443,7 +443,7 @@ class UFrame(object):
             
         return metadata
     
-    def instrument_to_query(self, ref_des, telemetry=None, time_delta_type=None, time_delta_value=None, begin_ts=None, end_ts=None, time_check=True, exec_dpa=True, application_type='netcdf', provenance=True, limit=-1, annotations=False, user=None, email=None):
+    def instrument_to_query(self, ref_des, telemetry=None, time_delta_type=None, time_delta_value=None, begin_ts=None, end_ts=None, time_check=True, exec_dpa=True, application_type='netcdf', provenance=True, limit=-1, annotations=False, user=None, email=None, selogging=False):
         '''Return the list of request urls that conform to the UFrame API for the specified
         reference_designator.
         
@@ -573,7 +573,7 @@ class UFrame(object):
                     continue
 
                 # Create the url
-                stream_url = '{:s}/{:s}/{:s}/{:s}-{:s}/{:s}/{:s}?beginDT={:s}&endDT={:s}&format=application/{:s}&limit={:d}&execDPA={:s}&include_provenance={:s}'.format(
+                stream_url = '{:s}/{:s}/{:s}/{:s}-{:s}/{:s}/{:s}?beginDT={:s}&endDT={:s}&format=application/{:s}&limit={:d}&execDPA={:s}&include_provenance={:s}&selogging={:s}'.format(
                     self.url,
                     r_tokens[0],
                     r_tokens[1],
@@ -586,7 +586,8 @@ class UFrame(object):
                     application_type,
                     limit,
                     str(exec_dpa).lower(),
-                    str(provenance).lower())
+                    str(provenance).lower(),
+                    str(selogging).lower())
                     
                 if user:
                     stream_url = '{:s}&user={:s}'.format(stream_url, user)

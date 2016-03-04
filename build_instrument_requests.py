@@ -72,7 +72,8 @@ def main(args):
             limit=args.limit,
             annotations=args.no_annotations,
             user=args.user,
-            email=args.email)
+            email=args.email,
+            selogging=args.selogging)
     
         for request_url in request_urls:
             urls.append(request_url)
@@ -144,6 +145,9 @@ if __name__ == '__main__':
         dest='email',
         type=str,
         help='Add an email address for emailing UFrame responses to the request once sent')
+    arg_parser.add_argument('--selogging',
+        action='store_true',
+        help='Include advanced stream engine logging')
 
     parsed_args = arg_parser.parse_args()
 
