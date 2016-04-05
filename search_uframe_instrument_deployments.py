@@ -70,31 +70,42 @@ def main(args):
         for deployment in deployments:
             
             deployment['reference_designator'] = '{:s}-{:s}-{:s}'.format(deployment['referenceDesignator']['subsite'], deployment['referenceDesignator']['node'], deployment['referenceDesignator']['sensor'])
-            t0 = time.gmtime(deployment['startDate']/1000)
-            dt0 = datetime.datetime(t0.tm_year,
-                t0.tm_mon,
-                t0.tm_mday,
-                t0.tm_hour,
-                t0.tm_min,
-                t0.tm_sec,
-                0,
-                timezone('UTC'))
-            deployment['startDateTs'] = dt0.strftime('%Y-%m-%dT%H:%M:%S.%sZ')
+            
+            try:
+                t0 = time.gmtime(deployment['startDate']/1000)
+                dt0 = datetime.datetime(t0.tm_year,
+                    t0.tm_mon,
+                    t0.tm_mday,
+                    t0.tm_hour,
+                    t0.tm_min,
+                    t0.tm_sec,
+                    0,
+                    timezone('UTC'))
+                deployment['startDateTs'] = dt0.strftime('%Y-%m-%dT%H:%M:%S.%sZ')
+            except ValueError as e:
+                sys.stderr.write('[{:s}] {:s}: {:f}->{:s}\n'.format(deployment['reference_designator'], e, deployment['startDate']/1000,t0))
+                sys.stderr.flush()
+                deployment['startDateTs'] = None
 
             # End date
             if not deployment['endDate']:
                 deployment['endDateTs'] = None
             else:
-                t1 = time.gmtime(deployment['endDate']/1000)
-                dt1 = datetime.datetime(t1.tm_year,
-                    t1.tm_mon,
-                    t1.tm_mday,
-                    t1.tm_hour,
-                    t1.tm_min,
-                    t1.tm_sec,
-                    0,
-                    timezone('UTC'))
-                deployment['endDateTs'] = dt1.strftime('%Y-%m-%dT%H:%M:%S.%sZ')
+                try:
+                    t1 = time.gmtime(deployment['endDate']/1000)
+                    dt1 = datetime.datetime(t1.tm_year,
+                        t1.tm_mon,
+                        t1.tm_mday,
+                        t1.tm_hour,
+                        t1.tm_min,
+                        t1.tm_sec,
+                        0,
+                        timezone('UTC'))
+                    deployment['endDateTs'] = dt1.strftime('%Y-%m-%dT%H:%M:%S.%sZ')
+                except ValueError as e:
+                    sys.stderr.write('[{:s}] {:s}: {:f}->{:s}\n'.format(deployment['reference_designator'], e, deployment['startDate']/1000,t0))
+                    sys.stderr.flush()
+                    deployment['endDateTs'] = None
             
             csv_writer.writerow([deployment[k] for k in cols])
     
