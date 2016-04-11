@@ -4,8 +4,6 @@ import time
 
 
 def group_instrument_deployment_events_by_subsite(deployment_events):
-    '''Returns a data structure in which instrument deployments (fully-qualified
-    reference designators only) are grouped by array subsite'''
     
     subsites = []
     
