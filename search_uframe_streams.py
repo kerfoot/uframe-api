@@ -45,8 +45,11 @@ def main(args):
         t1 = datetime.datetime.utcnow()
         dt = t1 - t0
         sys.stderr.write('Complete ({:d} seconds)\n'.format(dt.seconds))
-    
-    instruments = uframe.stream_to_instrument(args.stream_name)
+   
+    if args.stream_name:
+        instruments = uframe.stream_to_instrument(args.stream_name)
+    else:
+        instruments = uframe.streams
         
     if args.json:
         json.dumps(instruments)
@@ -60,6 +63,7 @@ if __name__ == '__main__':
 
     arg_parser = argparse.ArgumentParser(description=main.__doc__)
     arg_parser.add_argument('stream_name',
+        nargs='?',
         help='Name of the stream to search')
     arg_parser.add_argument('-j', '--json',
         dest='json',
