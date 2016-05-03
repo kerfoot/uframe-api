@@ -555,14 +555,14 @@ class UFrame(object):
                 # the stream metadata times if time_check=True
                 if time_check:
                     if dt1 > stream_dt1:
-                        sys.stderr.write('time_check ({:s}): End time exceeds stream endTime ({:s} > {:s})\n'.format(stream['stream'], ts1, stream['endTime']))
-                        sys.stderr.write('time_check ({:s}): Setting request end time to stream endTime\n'.format(stream['stream']))
+                        sys.stderr.write('time_check ({:s}-{:s}): End time exceeds stream endTime ({:s} > {:s})\n'.format(ref_des, stream['stream'], ts1, stream['endTime']))
+                        sys.stderr.write('time_check ({:s}-{:s}): Setting request end time to stream endTime\n'.format(ref_des, stream['stream']))
                         sys.stderr.flush()
                         ts1 = stream['endTime']
                     
                     if dt0 < stream_dt0:
-                        sys.stderr.write('time_check ({:s}): Start time is earlier than stream beginTime ({:s} < {:s})\n'.format(stream['stream'], ts0, stream['beginTime']))
-                        sys.stderr.write('time_check ({:s}): Setting request begin time to stream beginTime\n'.format(stream['stream']))
+                        sys.stderr.write('time_check ({:s}-{:s}): Start time is earlier than stream beginTime ({:s} < {:s})\n'.format(ref_des, stream['stream'], ts0, stream['beginTime']))
+                        sys.stderr.write('time_check ({:s}-{:s}): Setting request begin time to stream beginTime\n'.format(ref_des, stream['stream']))
                         ts0 = stream['beginTime']
                        
                 # Check that ts0 < ts1
@@ -625,33 +625,41 @@ class UFrame(object):
             if not d['startDate']:
                 sys.stderr.write('{:s}: No deployment startDate from DeploymentEvent\n'.format(ref_des))
                 continue
-                
-            t0 = time.gmtime(d['startDate']/1000)
-            dt0 = datetime.datetime(t0.tm_year,
-                t0.tm_mon,
-                t0.tm_mday,
-                t0.tm_hour,
-                t0.tm_min,
-                t0.tm_sec,
-                0,
-                timezone('UTC'))
-            ts0 = dt0.strftime('%Y-%m-%dT%H:%M:%S.%sZ')
+            
+            try: 
+                t0 = time.gmtime(d['startDate']/1000)
+                dt0 = datetime.datetime(t0.tm_year,
+                    t0.tm_mon,
+                    t0.tm_mday,
+                    t0.tm_hour,
+                    t0.tm_min,
+                    t0.tm_sec,
+                    0,
+                    timezone('UTC'))
+                ts0 = dt0.strftime('%Y-%m-%dT%H:%M:%S.%sZ')
+            except ValueError as e:
+                sys.stderr.write('{:s} (Deployment {:d} start_date): {:s}\n'.format(ref_des, d['deploymentNumber'], e.message))
+                continue
 
             # End date
             if not d['endDate']:
                 ts1 = None
             else:
-                t1 = time.gmtime(d['endDate']/1000)
-                dt1 = datetime.datetime(t1.tm_year,
-                    t1.tm_mon,
-                    t1.tm_mday,
-                    t1.tm_hour,
-                    t1.tm_min,
-                    t1.tm_sec,
-                    0,
-                    timezone('UTC'))
-                ts1 = dt1.strftime('%Y-%m-%dT%H:%M:%S.%sZ')
-                
+                try:
+                    t1 = time.gmtime(d['endDate']/1000)
+                    dt1 = datetime.datetime(t1.tm_year,
+                        t1.tm_mon,
+                        t1.tm_mday,
+                        t1.tm_hour,
+                        t1.tm_min,
+                        t1.tm_sec,
+                        0,
+                        timezone('UTC'))
+                    ts1 = dt1.strftime('%Y-%m-%dT%H:%M:%S.%sZ')
+                except ValueError as e:
+                    sys.stderr.write('{:s} (Deployment {:d} end date): {:s}\n'.format(ref_des, d['deploymentNumber'], e.message))
+                    continue
+                    
             # Create the queries
             instrument_urls = self.instrument_to_query(ref_des,
                 telemetry=telemetry, 
