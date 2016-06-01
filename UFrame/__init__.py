@@ -242,36 +242,78 @@ class UFrame(object):
             sys.stderr.write('{:s}\n'.format(e.message))
             return
         
-        # Map the instrument metadata response to the reference designator
-        self._toc = {i['reference_designator']:i for i in toc_response}
-
-        # Create the sorted list of reference designators
-        ref_des = self._toc.keys()
-        ref_des.sort()
-        self._instruments = ref_des
-        
-        # Create a list of unique parameters
-        parameters = []
-        streams = []
-        for i in toc_response:
-            for p in i['instrument_parameters']:
-                if not parameters:
+        # Old TOC is an array of instruments.
+        # New TOC is a dictionary
+        # So we need to convert based on type(toc_response)
+        if type(toc_response) == list:
+            # Map the instrument metadata response to the reference designator
+            self._toc = {i['reference_designator']:i for i in toc_response}
+    
+            # Create the sorted list of reference designators
+            ref_des = self._toc.keys()
+            ref_des.sort()
+            self._instruments = ref_des
+            
+            # Create a list of unique parameters
+            parameters = []
+            streams = []
+            for i in toc_response:
+                for p in i['instrument_parameters']:
+                    if not parameters:
+                        parameters.append(p['particleKey'])
+                        continue
+                    elif p['particleKey'] in parameters:
+                        continue
+                        
                     parameters.append(p['particleKey'])
-                    continue
-                elif p['particleKey'] in parameters:
-                    continue
-                    
-                parameters.append(p['particleKey'])
-                    
-            for s in i['streams']:
-                if not streams:
+                        
+                for s in i['streams']:
+                    if not streams:
+                        streams.append(s['stream'])
+                    elif s['stream'] in streams:
+                        continue
+                        
                     streams.append(s['stream'])
-                elif s['stream'] in streams:
-                    continue
+        elif type(toc_response) == dict:
+            # Map the instrument metadata response to the reference designator
+            self._toc = {i['reference_designator']:i for i in toc_response['instruments']}
+            
+            # Create the sorted list of reference designators
+            ref_des = self._toc.keys()
+            ref_des.sort()
+            self._instruments = ref_des
+            
+            # Create a dictionary mapping parameter id (pdId) to the parameter metadata
+            param_defs = {p['pdId']:p for p in toc_response['parameter_definitions']}
+            # Loop through the toc_response['parameters_by_stream'] and create
+            # an array of dictionaries containing all paramters for the specified stream
+            stream_defs = {}
+            for s in toc_response['parameters_by_stream'].keys():
+                stream_params = [param_defs[pdId] for pdId in toc_response['parameters_by_stream'][s]]
+                for p in stream_params:
+                    p[u'stream'] = s
                     
-                streams.append(s['stream'])
+                stream_defs[s] = stream_params
+                    
+            # Loop through self._toc (instruments) and add the stream_params
+            for i in self._toc.keys():
+                self._toc[i]['instrument_parameters'] = []
+                for s in self._toc[i]['streams']:
+                    self._toc[i]['instrument_parameters'] = self._toc[i]['instrument_parameters'] + stream_defs[s['stream']]
+                    
+            # Create the full list of parameter names
+            parameters = [p['particle_key'] for p in toc_response['parameter_definitions']]
+            # Create the full list of streams
+            streams = stream_defs.keys()
+            
+        else:
+            sys.stderr.write('Unknown TOC response\n')
+            return
+            
         
+        # Sort parameters
         parameters.sort()
+        # Sort streams
         streams.sort()        
         self._parameters = parameters
         self._streams = streams
