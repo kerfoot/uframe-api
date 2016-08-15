@@ -136,6 +136,7 @@ if __name__ == '__main__':
         help='Verbose display')
     arg_parser.add_argument('-u', '--user',
         dest='user',
+        default='_nouser',
         type=str,
         help='Add a user name to the query')
     arg_parser.add_argument('--validate_uframe',
