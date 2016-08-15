@@ -326,7 +326,7 @@ class UFrame(object):
     def validate_reference_designator(self, reference_designator):
         '''Validates the reference designator'''
 
-        match = re.compile(r'\w{8,}\-\w{5,}\-\w{2,}\-\w{9,}').search(reference_designator)
+        match = re.compile(r'\w{8,}\-\w{5,}\-\w{2,}\-\w{1,}').search(reference_designator)
         
         if match:
             return True
@@ -485,7 +485,7 @@ class UFrame(object):
             
         return metadata
     
-    def instrument_to_query(self, ref_des, telemetry=None, time_delta_type=None, time_delta_value=None, begin_ts=None, end_ts=None, time_check=True, exec_dpa=True, application_type='netcdf', provenance=True, limit=-1, annotations=False, user=None, email=None, selogging=False):
+    def instrument_to_query(self, ref_des, telemetry=None, time_delta_type=None, time_delta_value=None, begin_ts=None, end_ts=None, time_check=True, exec_dpa=True, application_type='netcdf', provenance=True, limit=-1, annotations=False, user='_nouser', email=None, selogging=False):
         '''Return the list of request urls that conform to the UFrame API for the specified
         reference_designator.
         
@@ -554,18 +554,27 @@ class UFrame(object):
             
             for stream in meta['streams']:
                 
-                #sys.stdout.write('Stream: {:s}\n'.format(stream['stream']))
-                
                 if telemetry and stream['method'].find(telemetry) == -1:
                     continue
                     
                 #Figure out what we're doing for time
                 dt0 = None
                 dt1 = None
+               
+                try:
+                    stream_dt0 = parser.parse(stream['beginTime'])
+                except ValueError:
+                    sys.stderr.write('{:s}-{:s}: Invalid beginTime ({:s})\n'.format(instrument, stream['stream'], stream['beginTime']))
+                    continue
+
+                try:
+                    stream_dt1 = parser.parse(stream['endTime'])
+                except ValueError:
+                    sys.stderr.write('{:s}-{:s}: Invalid endTime ({:s})\n'.format('instrument', stream['stream'], stream['endTime']))
+                    continue
                 
-                stream_dt0 = parser.parse(stream['beginTime'])
-                stream_dt1 = parser.parse(stream['endTime'])
-                
+                sys.stderr.flush()
+
                 if time_delta_type and time_delta_value:
                     dt1 = stream_dt1
                     dt0 = dt1 - tdelta(**dict({time_delta_type : time_delta_value})) 
@@ -607,15 +616,15 @@ class UFrame(object):
                         sys.stderr.write('time_check ({:s}-{:s}): Setting request begin time to stream beginTime\n'.format(ref_des, stream['stream']))
                         ts0 = stream['beginTime']
                        
-                # Check that ts0 < ts1
-                dt0 = parser.parse(ts0)
-                dt1 = parser.parse(ts1)
-                if dt0 >= dt1:
-                    sys.stderr.write('{:s}: Invalid time range specified ({:s} >= {:s})\n'.format(stream['stream'], ts0, ts1))
-                    continue
+                    # Check that ts0 < ts1
+                    dt0 = parser.parse(ts0)
+                    dt1 = parser.parse(ts1)
+                    if dt0 >= dt1:
+                        sys.stderr.write('{:s}: Invalid time range specified ({:s} >= {:s})\n'.format(stream['stream'], ts0, ts1))
+                        continue
 
                 # Create the url
-                stream_url = '{:s}/{:s}/{:s}/{:s}-{:s}/{:s}/{:s}?beginDT={:s}&endDT={:s}&format=application/{:s}&limit={:d}&execDPA={:s}&include_provenance={:s}&selogging={:s}'.format(
+                stream_url = '{:s}/{:s}/{:s}/{:s}-{:s}/{:s}/{:s}?beginDT={:s}&endDT={:s}&format=application/{:s}&limit={:d}&execDPA={:s}&include_provenance={:s}&selogging={:s}&user={:s}'.format(
                     self.url,
                     r_tokens[0],
                     r_tokens[1],
@@ -629,10 +638,11 @@ class UFrame(object):
                     limit,
                     str(exec_dpa).lower(),
                     str(provenance).lower(),
-                    str(selogging).lower())
+                    str(selogging).lower(),
+                    user)
                     
-                if user:
-                    stream_url = '{:s}&user={:s}'.format(stream_url, user)
+                #if user:
+                #    stream_url = '{:s}&user={:s}'.format(stream_url, user)
                     
                 if email:
                     stream_url = '{:s}&email={:s}'.format(stream_url, email)
