@@ -3,7 +3,7 @@
 # USAGE:
 #
 
-PATH=${PATH}:/bin;
+PATH=:bin:/usr/local/bin:${PATH};
 
 app=$(basename $0);
 
@@ -13,7 +13,7 @@ NAME
     $app - recursively retrieve one or more UFrame asynchronous request result directories
 
 SYNOPSIS
-    $app [hupd]
+    $app [hupd] url1[ url2 url3 ...]
 
 DESCRIPTION
     Attempts to recursviely retrieve the parent directory and all child files
