@@ -104,7 +104,8 @@ def send_async_request(url, debug=False):
         'status_code' : -1,
         'response' : None,
         'reason' : None,
-        'stream' : None}
+        'stream' : {},
+        'reference_designator' : None}
     
     # Parse the request url and grab everything after /sensor/inv/ up to the query (?)
     request_regexp = re.compile('^https?:\/\/.*\/sensor\/inv\/(.*)\?')
@@ -122,7 +123,12 @@ def send_async_request(url, debug=False):
         return response
     
     # Create the stream name from the 5 tokens
-    response['stream'] = '-'.join(request_tokens)
+    response['reference_designator'] = '-'.join(request_tokens[:3])
+    response['instrument'] = {'subsite' : request_tokens[0],
+        'node' : request_tokens[1],
+        'sensor' : request_tokens[2],
+        'telemetry' : request_tokens[3],
+        'name' : request_tokens[4]}
     
     if debug:
         return response
