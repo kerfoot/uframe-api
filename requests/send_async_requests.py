@@ -124,11 +124,12 @@ def send_async_request(url, debug=False):
     
     # Create the stream name from the 5 tokens
     response['reference_designator'] = '-'.join(request_tokens[:3])
+    response['stream'] = '-'.join(request_tokens)
     response['instrument'] = {'subsite' : request_tokens[0],
         'node' : request_tokens[1],
         'sensor' : request_tokens[2],
         'telemetry' : request_tokens[3],
-        'name' : request_tokens[4]}
+        'stream' : request_tokens[4]}
     
     if debug:
         return response
