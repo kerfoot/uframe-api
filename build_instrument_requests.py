@@ -55,7 +55,7 @@ def main(args):
     if not instruments:
         sys.stderr.write('No instruments found for reference designator: {:s}\n'.format(args.reference_designator))
         sys.stderr.flush()
-    
+
     urls = []    
     for instrument in instruments:
         
