@@ -60,7 +60,7 @@ def main(args):
             continue
             
         fname = '{:s}-{:s}.request.json'.format(response['stream'],
-            datetime.datetime.utcnow().strftime('%Y%d%mT%H%M%S.%s'))
+            datetime.datetime.utcnow().strftime('%Y%m%dT%H%M%S.%s'))
         
         response_json_file = os.path.join(json_destination, fname)
         try:
