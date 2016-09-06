@@ -57,15 +57,19 @@ def main(args):
         instruments = uframe.instruments
         
     if not instruments:
-        sys.stderr.write('{:s}: No instrument matches found\n')
+        sys.stderr.write('{:s}: No instrument matches found\n'.format(args.reference_designator))
         return status
         
     if args.json:
         sys.stdout.write(json.dumps(instruments))
     elif args.streams:
         csv_writer = csv.writer(sys.stdout)
-        cols = instruments[0].keys()
-        cols.sort()
+        if args.metadata:
+            cols = instruments[0].keys()
+            cols.sort()
+        else:
+            cols = ['reference_designator',
+                    'stream']
         csv_writer.writerow(cols)
         for instrument in instruments:
             csv_writer.writerow([instrument[k] for k in cols])
@@ -82,6 +86,9 @@ if __name__ == '__main__':
         nargs='?',
         help='Name of the instrument to search')
     arg_parser.add_argument('-s', '--streams',
+        action='store_true',
+        help='Display metadata for all streams produced by the instrument')
+    arg_parser.add_argument('-m', '--metadata',
         action='store_true',
         help='Display metadata for all streams produced by the instrument')
     arg_parser.add_argument('-j', '--json',
