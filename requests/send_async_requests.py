@@ -105,7 +105,9 @@ def send_async_request(url, debug=False):
         'response' : None,
         'reason' : None,
         'stream' : {},
-        'reference_designator' : None}
+        'reference_designator' : None,
+        'instrument' : {},
+        'm2m' : {'status' : False, 'request_params' : None}}
     
     # Parse the request url and grab everything after /sensor/inv/ up to the query (?)
     request_regexp = re.compile('^https?:\/\/.*\/sensor\/inv\/(.*)\?')
@@ -136,6 +138,78 @@ def send_async_request(url, debug=False):
         
     try:
         r = requests.get(request_url)
+    except requests.exceptions.RequestException as e:
+        sys.stderr.write('{:s}\n'.format(e))
+        response['reason'] = e
+        return response
+    
+    response['status_code'] = r.status_code
+    response['reason'] = r.reason
+        
+    if r.status_code != 200:
+        return response
+    
+    # Decode the json UFrame response    
+    try:
+        response['response'] = r.json()
+        response['status'] = True
+    except requests.exceptions.ValueError as e:
+        response['reason'] = e
+        
+    return response
+    
+def send_m2m_async_request(url, user_name, api_token, debug=False):
+    '''Validate and send the UFrame request url.'''
+    
+    # Machine to machine ui url
+    m2m_url = 'https://uframe.ooi.rutgers.edu/api/m2m/get_data'
+    user_params = {}
+    user_params['data_type'] = 'sensor_inv'
+    user_params['user_request'] = ''
+    
+    request_url = url.strip()
+    
+    response = {'requestUrl' : request_url,
+        'status' : False,
+        'status_code' : -1,
+        'response' : None,
+        'reason' : None,
+        'stream' : {},
+        'reference_designator' : None,
+        'instrument' : {},
+        'm2m' : {'status' : True, 'request_params' : user_params}}
+    # Parse the request url and grab everything after /sensor/inv/ up to the query (?)
+    request_regexp = re.compile('^https?:\/\/.*\/sensor\/inv\/(.*)\?')
+    match = request_regexp.match(url)
+     
+    # Match required   
+    if not match:
+        response['reason'] = 'Badly Formatted Request'
+        return response
+    
+    # A properly formatted UFrame request url will split into 5 pieces    
+    request_tokens = match.groups()[0].split('/')
+    if len(request_tokens) != 5:
+        response['reason'] = 'Badly Formatted Request'
+        return response
+    
+    # Create the stream name from the 5 tokens
+    response['reference_designator'] = '-'.join(request_tokens[:3])
+    response['stream'] = '-'.join(request_tokens)
+    response['instrument'] = {'subsite' : request_tokens[0],
+        'node' : request_tokens[1],
+        'sensor' : request_tokens[2],
+        'telemetry' : request_tokens[3],
+        'stream' : request_tokens[4]}
+    
+    if debug:
+        return response
+        
+    # Create the m2m request url
+    m2m_request = '/'.join(match.groups())
+    
+    try:
+        r = requests.get(m2m_request, auth=(user_name, api_token), params=user_params, verify=False)
     except requests.exceptions.RequestException as e:
         sys.stderr.write('{:s}\n'.format(e))
         response['reason'] = e
