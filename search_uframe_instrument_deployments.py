@@ -200,7 +200,7 @@ if __name__ == '__main__':
         help='A string used to filter reference designators')
     arg_parser.add_argument('-b', '--baseurl',
         dest='base_url',
-        help='Specify an alternate uFrame server URL. Must start with \'http://\'.  Must be specified if UFRAME_BASE_URL environment variable is not set')
+        help='Specify the base uFrame server URL. Must start with \'http://\'.  Must be specified if UFRAME_BASE_URL environment variable is not set')
     arg_parser.add_argument('-j', '--json',
         dest='json',
         action='store_true',
