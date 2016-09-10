@@ -31,7 +31,11 @@ def main(args):
             except IOError as e:
                 sys.stderr.write(e)
                 return 1    
-        
+
+    # Ignore any commented out urls
+    comment_regexp = re.compile('^#')
+    urls = [u for u in urls if not comment_regexp.search(u)]
+
     if not urls:
         sys.stderr.write('No url(s) or file specified\n')
     

@@ -299,6 +299,7 @@ class UFrame(object):
             for i in self._toc.keys():
                 self._toc[i]['instrument_parameters'] = []
                 for s in self._toc[i]['streams']:
+                    s['reference_designator'] = i
                     self._toc[i]['instrument_parameters'] = self._toc[i]['instrument_parameters'] + stream_defs[s['stream']]
                     
             # Create the full list of parameter names
@@ -415,10 +416,12 @@ class UFrame(object):
             
         for r in self._toc.keys():
             streams = [s for s in self._toc[r]['streams'] if s['stream'].find(target_stream) >= 0]
+            if not streams:
+                continue
             for stream in streams:
-                if stream['sensor'] in instruments:
+                if stream['reference_designator'] in instruments:
                     continue
-                instruments.append(stream['sensor'])
+                instruments.append(stream['reference_designator'])
                 
         instruments.sort()
         
@@ -443,6 +446,9 @@ class UFrame(object):
             streams = self._toc[instrument]['streams']
             
             for stream in streams:
+                
+                # Add the reference designator
+                stream['reference_designator'] = instrument
                 
                 # Parse stream beginTime and endTime to create a unix timestamp, in milliseconds
                 stream_dt0 = parser.parse(stream['beginTime'])
