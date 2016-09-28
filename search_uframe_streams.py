@@ -39,7 +39,8 @@ def main(args):
         t0 = datetime.datetime.utcnow()
         sys.stderr.write('Fetching and creating UFrame table of contents...')
         
-    uframe.fetch_toc()
+    # Automatically called on instantiation of the instance
+#    uframe.fetch_toc()
     
     if args.verbose:
         t1 = datetime.datetime.utcnow()
