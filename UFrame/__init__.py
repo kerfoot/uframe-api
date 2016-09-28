@@ -52,13 +52,18 @@ class UFrame(object):
         self._parameters = []
         self._streams = []
         
-        # Events
-        self._events = []
-        self._event_types = []
+        # Deployment Events
+        self._selected_deployment_events = []
+        self._filtered_deployment_events = []
+        self._filtered_parsed_deployment_events = []
+        self._active_deployment_events = []
         
         # Set the base_url
         self.base_url = base_url
 
+        # Fetch the UFrame Table of Contents
+        self._fetch_toc()
+        
     @property
     def base_url(self):
         return self._base_url
@@ -89,6 +94,15 @@ class UFrame(object):
         # Create the data services url
         self._url = '{:s}:{:d}/sensor/inv'.format(self.base_url, self.port)
 
+        # Fetch the table of contents at the new url
+        self._fetch_toc()
+        
+        # Empty out the deployment event props
+        self._selected_deployment_events = []
+        self._filtered_deployment_events = []
+        self._filtered_parsed_deployment_events = []
+        self._active_deployment_events = []
+        
     @property
     def port(self):
         return self._port
@@ -129,201 +143,149 @@ class UFrame(object):
         return self._arrays
         
     @property
-    def events(self):
-        return self._events
-    
-    def fetch_events(self):
-        '''Fetch the events catalog from the specified UFrame instance.  This method
-        must be called before any subsequent calls to events methods.'''
+    def all_deployment_events(self):
+        return self._selected_deployment_events
         
-        self._port = 12573
-        self._url = '{:s}:{:d}/events'.format(self._base_url, self._port)
-        
-        try:
-            r = requests.get(self._url)
-        except requests.RequestException as e:
-            sys.stderr.write('{:s} ({:s})\n'.format(e.message, type(e)))
-            return
-            
-        if r.status_code != HTTP_STATUS_OK:
-            sys.stderr.write('Failed to fetch TOC: {:s}\n'.format(r.message))
-            return
-            
-        try:
-            events_response = r.json()
-        except ValueError as e:
-            sys.stderr.write('{:s}\n'.format(e.message))
-            return
-            
-        # Store all fetched events
-        self._events = events_response
-        
-        # Store the event types
-        self._event_types = {e['@class']:True for e in self._events}.keys()
-
-    # Events methods
     @property
-    def event_types(self):
+    def deployment_events(self):
+        return self._filtered_deployment_events
         
-        return self._event_types
+    @property
+    def instrument_deployments(self):
+        return self._filtered_parsed_deployment_events
+    
+    def search_instrument_deployments(self, ref_des, ref_des_search_string=None, status=None, raw=False):
+        '''Return the list of all deployment events for the specified reference
+        designator, which may be partial or fully-qualified reference designator
+        identifying the subsite, node or sensor.  An optional keyword argument
+        (status) may be set to all, active or inactive to return all <default>,
+        active or inactive deployment events'''
         
-    def search_events_by_type(self, event_type):
-        '''Return all events of type event_type'''
+        assets_url = '{:s}:12587/events/deployment/query?refdes={:s}'.format(self.base_url,
+            ref_des)
         
-        if not self._events:
-            sys.stderr.write('No events fetched.')
-            return
-            
-        return [e for e in self._events if e['@class'].find(event_type) > -1]
+        self._selected_deployment_events = []
+        self._filtered_deployment_events = []
+        self._filtered_parsed_deployment_events = []
         
-    def search_deployment_events(self, ref_des, tense=None):
-        '''Return the list of all deployment events that contain the specified
-        ref_des string, which may be a partial or fully-qualified reference designator
-        identifying the subsite, node or sensor.  An optional keyword argument, tense,
-        may be set to PRESENT or PAST to return only current or recovered events,
-        respectively.'''
-        
-        if not self._events:
-            sys.stderr.write('No events fetched.')
-            return
-            
-        d = self.search_events_by_type('.DeploymentEvent')
-        
-        if not d:
-            return d
-            
-        if not tense:
-            return [e for e in d if '{:s}-{:s}-{:s}'.format(e['referenceDesignator']['subsite'], e['referenceDesignator']['node'], e['referenceDesignator']['sensor']).find(ref_des) > -1]
-        else:
-            return [e for e in d if e['tense'].find(tense.upper()) > -1 and '{:s}-{:s}-{:s}'.format(e['referenceDesignator']['subsite'], e['referenceDesignator']['node'], e['referenceDesignator']['sensor']).find(ref_des) > -1]
-            
-    def search_deployment_events_by_instrument(self, instrument, tense=None):
-        '''Return the list of all deployment events of the specified instrument, 
-        which may be a partial or fully-qualified reference designator
-        identifying the instrument.  Results are restricted to instrument only.
-        An optional keyword argument, tense, may be set to PRESENT or PAST to return 
-        only current or recovered events, respectively.'''
-        
-        if not self._events:
-            sys.stderr.write('No events fetched.')
-            return
-        d = self.search_events_by_type('.DeploymentEvent')
-        
-        if not d:
-            return d
-            
-        if not tense:
-            return [e for e in d if e['referenceDesignator']['full'] and '{:s}-{:s}-{:s}'.format(e['referenceDesignator']['subsite'], e['referenceDesignator']['node'], e['referenceDesignator']['sensor']).find(instrument) > -1]
-        else:
-            return [e for e in d if e['referenceDesignator']['full'] and e['tense'].find(tense.upper()) > -1 and '{:s}-{:s}-{:s}'.format(e['referenceDesignator']['subsite'], e['referenceDesignator']['node'], e['referenceDesignator']['sensor']).find(instrument) > -1]
-
-    def fetch_toc(self):
-        '''Fetch the response from the UFrame table of contents end point and create
-        a data structure containing the streams and instruments from the Uframe instance.
-        This should be the first method you call once you point the UFrame instance
-        at a URL.'''
-        
-        self._port = 12576
-        self._url = '{:s}:{:d}/sensor/inv/toc'.format(self._base_url, self._port)
-        
+        # Send the request
         try:
-            r = requests.get(self._url)
-        except requests.RequestException as e:
-            sys.stderr.write('{:s} ({:s})\n'.format(e.message, type(e)))
-            return
-            
-        if r.status_code != HTTP_STATUS_OK:
-            sys.stderr.write('Failed to fetch TOC: {:s}\n'.format(r.message))
-            return
-            
+            r = requests.get(assets_url)
+        except requests.exceptions.MissingSchema as e:
+            sys.stderr.write('{:s}\n'.format(e))
+            return self._filtered_parsed_deployment_events
+        
+        # Check the request status
+        if r.status_code != 200:
+            sys.stderr.write('{:s}\n'.format(r.reason))
+            return self._filtered_parsed_deployment_events
+         
+        # Decode the json response
         try:
-            toc_response = r.json()
+            self._selected_deployment_events = r.json()
         except ValueError as e:
-            sys.stderr.write('{:s}\n'.format(e.message))
-            return
-        
-        # Old TOC is an array of instruments.
-        # New TOC is a dictionary
-        # So we need to convert based on type(toc_response)
-        if type(toc_response) == list:
-            # Map the instrument metadata response to the reference designator
-            self._toc = {i['reference_designator']:i for i in toc_response}
+            sys.stderr.write('{:s}\n'.format(r.message))
+            return self._filtered_parsed_deployment_events
+            
+        for event in self._selected_deployment_events:
+            
+            # Event must have a fully qualified reference designator
+            if not event['referenceDesignator']['full']:
+                sys.stderr.write('{:s}: Invalid instrument for event id={:0.0f}\n'.format(event['eventName'], event['eventId']))
+                continue
+             
+            # Create the fully qualified reference designator
+            reference_designator = '{:s}-{:s}-{:s}'.format(
+                event['referenceDesignator']['subsite'],
+                event['referenceDesignator']['node'],
+                event['referenceDesignator']['sensor'])   
+                
+            # Events must have a eventStartTime to be considered valid
+            if not event['eventStartTime']:
+                sys.stderr.write('{:s}: Deployment event id={:0.0f} has no eventStartTime\n'.format(event['eventName'], event['eventId']))
+                continue
+            
+            # Create the concise instrument deployment event object    
+            deployment_event = {'instrument' : None,
+                'event_start_ms' : event['eventStartTime'],
+                'event_stop_ms' : event['eventStopTime'],
+                'deployment_number' : event['deploymentNumber'],
+                'event_start_ts' : None,
+                'event_stop_ts' : None,
+                'active' : False,
+                'valid' : False}
+            instrument = {'reference_designator' : reference_designator,
+                'node' : event['referenceDesignator']['node'],
+                'full' : event['referenceDesignator']['full'],
+                'subsite' : event['referenceDesignator']['subsite'],
+                'sensor' : event['referenceDesignator']['sensor']}
+            # Add the instrument info to the event
+            deployment_event['instrument'] = instrument
     
-            # Create the sorted list of reference designators
-            ref_des = self._toc.keys()
-            ref_des.sort()
-            self._instruments = ref_des
-            
-            # Create a list of unique parameters
-            parameters = []
-            streams = []
-            for i in toc_response:
-                for p in i['instrument_parameters']:
-                    if not parameters:
-                        parameters.append(p['particleKey'])
-                        continue
-                    elif p['particleKey'] in parameters:
-                        continue
-                        
-                    parameters.append(p['particleKey'])
-                        
-                for s in i['streams']:
-                    if not streams:
-                        streams.append(s['stream'])
-                    elif s['stream'] in streams:
-                        continue
-                        
-                    streams.append(s['stream'])
-        elif type(toc_response) == dict:
-            # Map the instrument metadata response to the reference designator
-            self._toc = {i['reference_designator']:i for i in toc_response['instruments']}
-            
-            # Create the sorted list of reference designators
-            ref_des = self._toc.keys()
-            ref_des.sort()
-            self._instruments = ref_des
-            
-            # Create a dictionary mapping parameter id (pdId) to the parameter metadata
-            param_defs = {p['pdId']:p for p in toc_response['parameter_definitions']}
-            # Loop through the toc_response['parameters_by_stream'] and create
-            # an array of dictionaries containing all paramters for the specified stream
-            stream_defs = {}
-            for s in toc_response['parameters_by_stream'].keys():
-                stream_params = [param_defs[pdId] for pdId in toc_response['parameters_by_stream'][s]]
-                for p in stream_params:
-                    p[u'stream'] = s
+            # Parse the deployment event start time
+            try:
+                deployment_event['event_start_ts'] = datetime.datetime.utcfromtimestamp(deployment_event['event_start_ms']/1000).strftime('%Y-%m-%dT%H:%M:%S.%s')
+            except ValueError as e:
+                sys.stderr.write('Error parsing event_start_ms: {:s}\n'.format(e))
+                continue
+    
+            # Parse the deployment event end time, if there is one
+            if deployment_event['event_stop_ms']:
+                try:
+                    deployment_event['event_stop_ts'] = datetime.datetime.utcfromtimestamp(deployment_event['event_stop_ms']/1000).strftime('%Y-%m-%dT%H:%M:%S.%s')
+                except ValueError as e:
+                    sys.stderr.write('Error parsing event_start_ms: {:s}\n'.format(e))
+                    continue
+            else:
+                # If the event does not have an end time, mark the deployment as active
+                deployment_event['active'] = True
+                
+            # Deployment is valid
+            deployment_event['valid'] = True
+        
+            # Optionally filter the event based on it's status (None, 'all', 'active', 'inactive')
+            if status:
+                if status.lower() == 'active' and not deployment_event['active']:
+                    continue
+                elif status.lower() == 'inactive' and deployment_event['active']:
+                    continue
                     
-                stream_defs[s] = stream_params
+            # Search the reference_designator for ref_des_search_string if specified
+            if ref_des_search_string:
+                if reference_designator.find(ref_des_search_string) == -1:
+                    continue
                     
-            # Loop through self._toc (instruments) and add the stream_params
-            for i in self._toc.keys():
-                self._toc[i]['instrument_parameters'] = []
-                for s in self._toc[i]['streams']:
-                    s['reference_designator'] = i
-                    self._toc[i]['instrument_parameters'] = self._toc[i]['instrument_parameters'] + stream_defs[s['stream']]
-                    
-            # Create the full list of parameter names
-            parameters = [p['particle_key'] for p in toc_response['parameter_definitions']]
-            # Create the full list of streams
-            streams = stream_defs.keys()
+            # If we've made it here, add the event and deployment_event
+            self._filtered_deployment_events.append(event)
+            self._filtered_parsed_deployment_events.append(deployment_event)
             
+        return self._filtered_parsed_deployment_events
+    
+    def get_active_deployments(self, ref_des=None, ref_des_search_string=None):
+        '''Retrieve the list of actively deployed instruments from the entire UFrame
+        asset management schema.  A reference designator may be specified to retrieve
+        only active deployment events for that instrument or array.  Resulting
+        events may also be filtered by specifying a ref_des_search_string'''
+        
+        events = []
+
+        if ref_des:
+            # Get the list of fully-qualified instrument reference designators for 
+            # the specified partial or fully qualified ref_des
+            instruments = self.search_instruments(ref_des)
         else:
-            sys.stderr.write('Unknown TOC response\n')
-            return
+            instruments = self.instruments
             
+        for i in instruments:
+            new_events = self.search_instrument_deployments(i, status='active', ref_des_search_string=ref_des_search_string)
+            if not new_events:
+                continue
+            events = events + new_events
+            
+        self._active_deployment_events = events
         
-        # Sort parameters
-        parameters.sort()
-        # Sort streams
-        streams.sort()        
-        self._parameters = parameters
-        self._streams = streams
-        
-        # Create a dict of unique array names
-        arrays = {t.split('-')[0]:True for t in self._toc.keys()}.keys()
-        arrays.sort()
-        self._arrays = arrays
-    
+        return events
+
     def validate_reference_designator(self, reference_designator):
         '''Validates the reference designator'''
 
@@ -740,10 +702,117 @@ class UFrame(object):
                 urls.append(url)
                 
         return urls
+        
+    def _fetch_toc(self):
+        '''Fetch the response from the UFrame table of contents end point and create
+        a data structure containing the streams and instruments from the Uframe instance.
+        This should be the first method you call once you point the UFrame instance
+        at a URL.'''
+        
+        self._port = 12576
+        self._url = '{:s}:{:d}/sensor/inv/toc'.format(self._base_url, self._port)
+        
+        try:
+            r = requests.get(self._url)
+        except requests.RequestException as e:
+            sys.stderr.write('{:s} ({:s})\n'.format(e.message, type(e)))
+            return
+            
+        if r.status_code != HTTP_STATUS_OK:
+            sys.stderr.write('Failed to fetch TOC: {:s}\n'.format(r.message))
+            return
+            
+        try:
+            toc_response = r.json()
+        except ValueError as e:
+            sys.stderr.write('{:s}\n'.format(e.message))
+            return
+        
+        # Old TOC is an array of instruments.
+        # New TOC is a dictionary
+        # So we need to convert based on type(toc_response)
+        if type(toc_response) == list:
+            # Map the instrument metadata response to the reference designator
+            self._toc = {i['reference_designator']:i for i in toc_response}
+    
+            # Create the sorted list of reference designators
+            ref_des = self._toc.keys()
+            ref_des.sort()
+            self._instruments = ref_des
+            
+            # Create a list of unique parameters
+            parameters = []
+            streams = []
+            for i in toc_response:
+                for p in i['instrument_parameters']:
+                    if not parameters:
+                        parameters.append(p['particleKey'])
+                        continue
+                    elif p['particleKey'] in parameters:
+                        continue
+                        
+                    parameters.append(p['particleKey'])
+                        
+                for s in i['streams']:
+                    if not streams:
+                        streams.append(s['stream'])
+                    elif s['stream'] in streams:
+                        continue
+                        
+                    streams.append(s['stream'])
+        elif type(toc_response) == dict:
+            # Map the instrument metadata response to the reference designator
+            self._toc = {i['reference_designator']:i for i in toc_response['instruments']}
+            
+            # Create the sorted list of reference designators
+            ref_des = self._toc.keys()
+            ref_des.sort()
+            self._instruments = ref_des
+            
+            # Create a dictionary mapping parameter id (pdId) to the parameter metadata
+            param_defs = {p['pdId']:p for p in toc_response['parameter_definitions']}
+            # Loop through the toc_response['parameters_by_stream'] and create
+            # an array of dictionaries containing all paramters for the specified stream
+            stream_defs = {}
+            for s in toc_response['parameters_by_stream'].keys():
+                stream_params = [param_defs[pdId] for pdId in toc_response['parameters_by_stream'][s]]
+                for p in stream_params:
+                    p[u'stream'] = s
+                    
+                stream_defs[s] = stream_params
+                    
+            # Loop through self._toc (instruments) and add the stream_params
+            for i in self._toc.keys():
+                self._toc[i]['instrument_parameters'] = []
+                for s in self._toc[i]['streams']:
+                    s['reference_designator'] = i
+                    self._toc[i]['instrument_parameters'] = self._toc[i]['instrument_parameters'] + stream_defs[s['stream']]
+                    
+            # Create the full list of parameter names
+            parameters = [p['particle_key'] for p in toc_response['parameter_definitions']]
+            # Create the full list of streams
+            streams = stream_defs.keys()
+            
+        else:
+            sys.stderr.write('Unknown TOC response\n')
+            return
+            
+        
+        # Sort parameters
+        parameters.sort()
+        # Sort streams
+        streams.sort()        
+        self._parameters = parameters
+        self._streams = streams
+        
+        # Create a dict of unique array names
+        arrays = {t.split('-')[0]:True for t in self._toc.keys()}.keys()
+        arrays.sort()
+        self._arrays = arrays
 
     def __repr__(self):
-        if self._url:
-            return '<UFrame(url={:s})>'.format(self.url)
+        if self._base_url:
+            return '<UFrame(url={:s})>'.format(self.base_url)
         else:
             return '<UFrame(url=None)>'
 
