@@ -10,15 +10,14 @@ from UFrame import UFrame
 def main(args):
     '''Display all deployment events for the full or partially qualified
     reference designator.  A reference designator uniquely identifies an
-    instrument.'''
+    instrument.  Results are printed as csv records.'''
     
     base_url = args.base_url
     if not base_url:
-        sys.stderr.write('No UFrame url specified.  Checking UFRAME_BASE_URL environment variable\n')    
         base_url = os.getenv('UFRAME_BASE_URL')
         
     if not base_url:
-        sys.stderr.write('No UFrame instance specified')
+        sys.stderr.write('UFRAME_BASE_URL not set and no UFrame instance specified')
         sys.stderr.flush()
         return 1
     
@@ -80,14 +79,14 @@ if __name__ == '__main__':
     arg_parser.add_argument('-j', '--json',
         dest='json',
         action='store_true',
-        help='Print deployment events as a JSON object')
+        help='Print results as valid JSON')
     arg_parser.add_argument('-b', '--baseurl',
         dest='base_url',
-        help='Specify an alternate uFrame server URL. Must start with \'http://\'.  Value is taken from the UFRAME_BASE_URL environment variable, if set')
+        help='UFrame instance URL. Must begin with \'http://\'.  Default is taken from the UFRAME_BASE_URL environment variable, provided it is set.  If not set, the URL must be specified using this option')
     arg_parser.add_argument('-t', '--timeout',
         type=int,
         default=120,
-        help='Specify the timeout, in seconds (Default is 120 seconds).')
+        help='Request timeout, in seconds <Default=120>.')
             
     parsed_args = arg_parser.parse_args()
     #print parsed_args
