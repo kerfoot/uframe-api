@@ -453,7 +453,7 @@ class UFrame(object):
             
         return metadata
     
-    def instrument_to_query(self, ref_des, telemetry=None, time_delta_type=None, time_delta_value=None, begin_ts=None, end_ts=None, time_check=True, exec_dpa=True, application_type='netcdf', provenance=True, limit=-1, annotations=False, user='_nouser', email=None, selogging=False):
+    def instrument_to_query(self, ref_des, stream=None, telemetry=None, time_delta_type=None, time_delta_value=None, begin_ts=None, end_ts=None, time_check=True, exec_dpa=True, application_type='netcdf', provenance=True, limit=-1, annotations=False, user='_nouser', email=None, selogging=False):
         '''Return the list of request urls that conform to the UFrame API for the specified
         reference_designator.
         
@@ -515,14 +515,29 @@ class UFrame(object):
             #sys.stdout.write('Instrument: {:s}\n'.format(instrument))
                 
             # Store the metadata for this instrument
-            meta = self.toc[instrument]
+            #meta = self.toc[instrument]
+            # Get the streams produced by this instrument
+            instrument_streams = self.instrument_to_streams(instrument)
+            if stream:
+                stream_names = [s['stream'] for s in instrument_streams]
+                if stream not in stream_names:
+                    sys.stderr.write('{:s}: Invalid stream specified: {:s}\n'.format(instrument, stream))
+                    continue
+                    
+                i = stream_names.index(stream)
+                instrument_streams = [instrument_streams[i]]
+                
+            if not instrument_streams:
+                sys.stderr.write('{:s}: No valid streams found\n'.format(instrument))
+                continue
+                
             
             # Break the reference designator up
             r_tokens = instrument.split('-')
             
-            for stream in meta['streams']:
+            for instrument_stream in instrument_streams:
                 
-                if telemetry and stream['method'].find(telemetry) == -1:
+                if telemetry and instrument_stream['method'].find(telemetry) == -1:
                     continue
                     
                 #Figure out what we're doing for time
@@ -530,15 +545,15 @@ class UFrame(object):
                 dt1 = None
                
                 try:
-                    stream_dt0 = parser.parse(stream['beginTime'])
+                    stream_dt0 = parser.parse(instrument_stream['beginTime'])
                 except ValueError:
-                    sys.stderr.write('{:s}-{:s}: Invalid beginTime ({:s})\n'.format(instrument, stream['stream'], stream['beginTime']))
+                    sys.stderr.write('{:s}-{:s}: Invalid beginTime ({:s})\n'.format(instrument, instrument_stream['stream'], instrument_stream['beginTime']))
                     continue
 
                 try:
-                    stream_dt1 = parser.parse(stream['endTime'])
+                    stream_dt1 = parser.parse(instrument_stream['endTime'])
                 except ValueError:
-                    sys.stderr.write('{:s}-{:s}: Invalid endTime ({:s})\n'.format('instrument', stream['stream'], stream['endTime']))
+                    sys.stderr.write('{:s}-{:s}: Invalid endTime ({:s})\n'.format('instrument', instrument_stream['stream'], instrument_stream['endTime']))
                     continue
                 
                 sys.stderr.flush()
@@ -561,34 +576,34 @@ class UFrame(object):
                 try:
                     ts1 = dt1.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
                 except ValueError as e:
-                    sys.stderr.write('{:s}-{:s}: {:s}\n'.format(instrument, stream['stream'], e.message))
+                    sys.stderr.write('{:s}-{:s}: {:s}\n'.format(instrument, instrument_stream['stream'], e.message))
                     continue
 
                 try:
                     ts0 = dt0.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
                 except ValueError as e:
-                    sys.stderr.write('{:s}-{:s}: {:s}\n'.format(instrument, stream['stream'], e.message))
+                    sys.stderr.write('{:s}-{:s}: {:s}\n'.format(instrument, instrument_stream['stream'], e.message))
                     continue
                         
                 # Make sure the specified or calculated start and end time are within
                 # the stream metadata times if time_check=True
                 if time_check:
                     if dt1 > stream_dt1:
-                        sys.stderr.write('time_check ({:s}-{:s}): End time exceeds stream endTime ({:s} > {:s})\n'.format(ref_des, stream['stream'], ts1, stream['endTime']))
-                        sys.stderr.write('time_check ({:s}-{:s}): Setting request end time to stream endTime\n'.format(ref_des, stream['stream']))
+                        sys.stderr.write('time_check ({:s}-{:s}): End time exceeds stream endTime ({:s} > {:s})\n'.format(ref_des, instrument_stream['stream'], ts1, instrument_stream['endTime']))
+                        sys.stderr.write('time_check ({:s}-{:s}): Setting request end time to stream endTime\n'.format(ref_des, instrument_stream['stream']))
                         sys.stderr.flush()
-                        ts1 = stream['endTime']
+                        ts1 = instrument_stream['endTime']
                     
                     if dt0 < stream_dt0:
-                        sys.stderr.write('time_check ({:s}-{:s}): Start time is earlier than stream beginTime ({:s} < {:s})\n'.format(ref_des, stream['stream'], ts0, stream['beginTime']))
-                        sys.stderr.write('time_check ({:s}-{:s}): Setting request begin time to stream beginTime\n'.format(ref_des, stream['stream']))
-                        ts0 = stream['beginTime']
+                        sys.stderr.write('time_check ({:s}-{:s}): Start time is earlier than stream beginTime ({:s} < {:s})\n'.format(ref_des, instrument_stream['stream'], ts0, instrument_stream['beginTime']))
+                        sys.stderr.write('time_check ({:s}-{:s}): Setting request begin time to stream beginTime\n'.format(ref_des, instrument_stream['stream']))
+                        ts0 = instrument_stream['beginTime']
                        
                     # Check that ts0 < ts1
                     dt0 = parser.parse(ts0)
                     dt1 = parser.parse(ts1)
                     if dt0 >= dt1:
-                        sys.stderr.write('{:s}: Invalid time range specified ({:s} >= {:s})\n'.format(stream['stream'], ts0, ts1))
+                        sys.stderr.write('{:s}: Invalid time range specified ({:s} >= {:s})\n'.format(instrument_stream['stream'], ts0, ts1))
                         continue
 
                 # Create the url
@@ -598,8 +613,8 @@ class UFrame(object):
                     r_tokens[1],
                     r_tokens[2],
                     r_tokens[3],
-                    stream['method'],
-                    stream['stream'],
+                    instrument_stream['method'],
+                    instrument_stream['stream'],
                     ts0,
                     ts1,
                     application_type,

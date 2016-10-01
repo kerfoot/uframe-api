@@ -61,6 +61,7 @@ def main(args):
     for instrument in instruments:
         
         request_urls = uframe.instrument_to_query(instrument,
+            stream=args.stream,
             telemetry=args.telemetry,
             time_delta_type=args.time_delta_type,
             time_delta_value=args.time_delta_value,
@@ -89,6 +90,8 @@ if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description=main.__doc__)
     arg_parser.add_argument('reference_designator',
         help='Partial or fully-qualified reference designator identifying one or more instruments')
+    arg_parser.add_argument('--stream',
+        help='Restricts urls to the specified stream name, if it is produced by the instrument')
     arg_parser.add_argument('--telemetry',
         help='Restricts urls to the specified telemetry type')
     arg_parser.add_argument('-s', '--start_date',
