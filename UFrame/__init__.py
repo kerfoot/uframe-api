@@ -64,6 +64,9 @@ class UFrame(object):
         # Fetch the UFrame Table of Contents
         self._fetch_toc()
         
+        # Response from the last UFrame async request sent via self.send_async_request
+        self._last_request_response = None
+        
     @property
     def base_url(self):
         return self._base_url
@@ -102,6 +105,10 @@ class UFrame(object):
         self._filtered_deployment_events = []
         self._filtered_parsed_deployment_events = []
         self._active_deployment_events = []
+        
+        # Asynchronous requests
+        self._last_async_request_urls = []
+        self._last_async_request_responses = []
         
     @property
     def port(self):
@@ -153,6 +160,14 @@ class UFrame(object):
     @property
     def instrument_deployments(self):
         return self._filtered_parsed_deployment_events
+        
+    @property
+    def last_async_request_urls(self):
+        return self._last_async_request_urls
+        
+    @property
+    def last_async_responses(self):
+        return self._last_async_request_responses
     
     def search_instrument_deployments(self, ref_des, ref_des_search_string=None, status=None, raw=False):
         '''Return the list of all deployment events for the specified reference
@@ -471,11 +486,12 @@ class UFrame(object):
             annotations: boolean value (True or False) specifying whether to include all dataset annotations
         '''
         
-        urls = []
+        self._last_async_request_urls = []
+        self._last_async_request_responses = []
         
         instruments = self.search_instruments(ref_des)
         if not instruments:
-            return urls
+            return []
         
         self._port = 12576
         self._url = '{:s}:{:d}/sensor/inv'.format(self._base_url, self._port)    
@@ -484,7 +500,7 @@ class UFrame(object):
             if time_delta_type not in _valid_relativedeltatypes:
                 sys.stderr.write('Invalid dateutil.relativedelta type: {:s}\n'.format(time_delta_type))
                 sys.stderr.flush()
-                return urls
+                return []
         
         begin_dt = None
         end_dt = None
@@ -494,7 +510,7 @@ class UFrame(object):
             except ValueError as e:
                 sys.stderr.write('Invalid begin_dt: {:s} ({:s})\n'.format(begin_ts, e.message))
                 sys.stderr.flush()
-                return urls    
+                return []    
                 
         if end_ts:
             try:
@@ -502,7 +518,7 @@ class UFrame(object):
             except ValueError as e:
                 sys.stderr.write('Invalid end_dt: {:s} ({:s})\n'.format(end_ts, e.message))
                 sys.stderr.flush()
-                return urls
+                return []
                 
         for instrument in instruments:
             
@@ -630,9 +646,9 @@ class UFrame(object):
                 if email:
                     stream_url = '{:s}&email={:s}'.format(stream_url, email)
                     
-                urls.append(stream_url)
+                self._last_async_request_urls.append(stream_url)
                             
-        return urls
+        return self._last_async_request_urls
     
     def instrument_to_deployment_query(self, ref_des, deployment_number=0, tense=None, telemetry=None, begin_ts=None, end_ts=None, time_check=True, exec_dpa=True, application_type='netcdf', provenance=True, limit=-1, annotations=False, user=None, email=None):
         
@@ -717,6 +733,109 @@ class UFrame(object):
                 urls.append(url)
                 
         return urls
+        
+    def send_async_requests(self, urls=[], debug=False):
+        '''Validate and send the request url directly to the UFrame instance.  The 
+        request response is returned and also stored in UFrame.last_async_response'''
+    
+        # Send the last batch of requests created by the instance if no urls
+        if not urls:
+            urls = self._last_async_request_urls
+        elif type(urls) == str:
+            urls = [urls]
+        elif type(urls) != list:
+            sys.stderr.write('urls parameter must be either a single request url or list of request urls\n')
+            return None
+        
+        if not urls:
+            sys.stderr.write('No urls to send\n')
+            return None
+            
+        # Clear the last set of request responses    
+        self._last_async_request_responses = []
+        
+        for url in urls:
+            
+            # Remove leading and trailing whitespace from the url
+            request_url = url.strip()
+            
+            response = {'requestUrl' : request_url,
+                'status' : False,
+                'status_code' : -1,
+                'response' : None,
+                'reason' : None,
+                'stream' : {},
+                'reference_designator' : None,
+                'instrument' : None,
+                'm2m' : {'status' : False, 'request_params' : None}}
+            
+            # The url must be sent to the UFrame.base_url UFrame instance
+            if not url.startswith(self.base_url):
+                response['requestUrl'] = 'URL points to alternate UFrame instance'
+                # Store the response
+                self._last_async_request_responses.append(response)
+                continue 
+            
+            # Parse the request url and grab everything after /sensor/inv/ up to the query (?)
+            request_regexp = re.compile('^https?:\/\/.*\/sensor\/inv\/(.*)\?')
+            match = request_regexp.match(url)
+            
+            # Match required   
+            if not match:
+                response['reason'] = 'UFrame Instance: Badly Formatted Request'
+                # Store the response
+                self._last_async_request_responses.append(response)
+                continue 
+            
+            # A properly formatted UFrame request url will split into 5 pieces    
+            request_tokens = match.groups()[0].split('/')
+            if len(request_tokens) != 5:
+                response['reason'] = 'UFrame Instance: Badly Formatted Request'
+                # Store the response
+                self._last_async_request_responses.append(response)
+                continue 
+            
+            # Create the stream name from the 5 tokens
+            response['reference_designator'] = '-'.join(request_tokens[:3])
+        #    response['stream'] = '-'.join(request_tokens)
+            # 2016-09-30: kerfoot@marine - new stream name
+            order = [0,1,2,4,3]
+            response['stream'] = '-'.join([request_tokens[x] for x in order])
+        
+            response['instrument'] = {'subsite' : request_tokens[0],
+                'node' : request_tokens[1],
+                'sensor' : request_tokens[2],
+                'telemetry' : request_tokens[3],
+                'stream' : request_tokens[4]}
+                
+            try:
+                r = requests.get(request_url)
+            except requests.exceptions.RequestException as e:
+                sys.stderr.write('{:s}\n'.format(e))
+                response['reason'] = e
+                # Store the response
+                self._last_async_request_responses.append(response)
+                continue 
+            
+            response['status_code'] = r.status_code
+            response['reason'] = r.reason
+                
+            if r.status_code != 200:
+                # Store the response
+                self._last_async_request_responses.append(response)
+                continue 
+            
+            # Decode the json UFrame response    
+            try:
+                response['response'] = r.json()
+                response['status'] = True
+            except requests.exceptions.ValueError as e:
+                response['reason'] = e
+            
+            # Store the response
+            self._last_async_request_responses.append(response)
+        
+        return self._last_async_request_responses
         
     def _fetch_toc(self):
         '''Fetch the response from the UFrame table of contents end point and create
