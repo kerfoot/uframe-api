@@ -347,7 +347,8 @@ class UFrame(object):
         if metadata:
             return [p for p in self._parameters if p['particleKey'].find(target_string) >= 0]
         else:
-            return [p['particleKey'] for p in self._parameters if p['particleKey'].find(target_string) >= 0]
+            #return [p['particleKey'] for p in self._parameters if p['particleKey'].find(target_string) >= 0]
+            return [p for p in self._parameters if p.find(target_string) >= 0]
     
     def search_streams(self, target_stream):
         '''Returns a the list of all streams containing the target_stream fragment
