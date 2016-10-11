@@ -239,7 +239,7 @@ class UFrame(object):
     
             # Parse the deployment event start time
             try:
-                deployment_event['event_start_ts'] = datetime.datetime.utcfromtimestamp(deployment_event['event_start_ms']/1000).strftime('%Y-%m-%dT%H:%M:%S.%s')
+                deployment_event['event_start_ts'] = datetime.datetime.utcfromtimestamp(deployment_event['event_start_ms']/1000).strftime('%Y-%m-%dT%H:%M:%S.%sZ')
             except ValueError as e:
                 sys.stderr.write('Error parsing event_start_ms: {:s}\n'.format(e))
                 continue
@@ -247,7 +247,7 @@ class UFrame(object):
             # Parse the deployment event end time, if there is one
             if deployment_event['event_stop_ms']:
                 try:
-                    deployment_event['event_stop_ts'] = datetime.datetime.utcfromtimestamp(deployment_event['event_stop_ms']/1000).strftime('%Y-%m-%dT%H:%M:%S.%s')
+                    deployment_event['event_stop_ts'] = datetime.datetime.utcfromtimestamp(deployment_event['event_stop_ms']/1000).strftime('%Y-%m-%dT%H:%M:%S.%sZ')
                 except ValueError as e:
                     sys.stderr.write('Error parsing event_start_ms: {:s}\n'.format(e))
                     continue
