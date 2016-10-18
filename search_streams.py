@@ -31,8 +31,7 @@ def main(args):
         sys.stderr.write('Creating UFrame API instance\n')
          
     uframe = UFrame(base_url=base_url,
-        timeout=args.timeout,
-        validate=args.validate_uframe)
+        timeout=args.timeout)
     
     # Fetch the table of contents from UFrame
     if args.verbose:
