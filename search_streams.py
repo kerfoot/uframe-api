@@ -8,9 +8,9 @@ import datetime
 from UFrame import UFrame
 
 def main(args):
-    '''Return the fully qualified reference designator list for all instruments
-    producing the specified stream in the specified UFrame instance.  The stream may
-    be a partial or complete stream name'''
+    '''Return the list of all known streams in the default UFrame instance.
+    If a partial or full stream is specified, all fully qualified reference
+    designators for all instruments producing the stream(s) are returned.'''
     
     status = 0
     
@@ -80,9 +80,6 @@ if __name__ == '__main__':
     arg_parser.add_argument('-v', '--verbose',
         action='store_true',
         help='Verbose display')
-    arg_parser.add_argument('--validate_uframe',
-        action='store_true',
-        help='Attempt to validate the UFrame instance <Default:False>')
 
     parsed_args = arg_parser.parse_args()
 
