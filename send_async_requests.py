@@ -37,14 +37,6 @@ def main(args):
         sys.stderr.write('Invalid JSON response destination: {:s}\n'.format(json_destination))
         return 1
         
-    #uframe_base_url = args.base_url
-    #if not uframe_base_url:
-    #    if not os.getenv('UFRAME_BASE_URL'):
-    #        sys.stderr.write('No UFrame instance specified or found (UFRAME_BASE_URL)\n')
-    #        return 1
-    #        
-    #    uframe_base_url = os.getenv('UFRAME_BASE_URL')
-        
     # Regex to capture the UFrame base url from each request url
     http_regex = re.compile('(http|ftp|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?')
 
