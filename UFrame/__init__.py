@@ -429,8 +429,19 @@ class UFrame(object):
                 stream['reference_designator'] = instrument
                 
                 # Parse stream beginTime and endTime to create a unix timestamp, in milliseconds
-                stream_dt0 = parser.parse(stream['beginTime'])
-                stream_dt1 = parser.parse(stream['endTime'])
+                try:
+                    stream_dt0 = parser.parse(stream['beginTime'])
+	            except ValueError as e:
+                    sys.stderr.write('{:s}: {:s} ({:s})\n'.format(stream['stream'], stream['beginTime'], e.message))
+	                sys.stderr.flush()
+	                continue
+
+                try:
+                    stream_dt1 = parser.parse(stream['endTime'])
+	            except ValueError as e:
+                    sys.stderr.write('{:s}: {:s} ({:s})\n'.format(stream['stream'], stream['endTime'], e.message))
+	                sys.stderr.flush()
+	                continue
                 
                 # Format the endDT and beginDT values for the query
                 stream['beginTimeEpochMs'] = None
