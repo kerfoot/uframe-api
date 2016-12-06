@@ -431,14 +431,14 @@ class UFrame(object):
                 # Parse stream beginTime and endTime to create a unix timestamp, in milliseconds
                 try:
                     stream_dt0 = parser.parse(stream['beginTime'])
-	            except ValueError as e:
+	        except ValueError as e:
                     sys.stderr.write('{:s}: {:s} ({:s})\n'.format(stream['stream'], stream['beginTime'], e.message))
 	                sys.stderr.flush()
 	                continue
 
                 try:
                     stream_dt1 = parser.parse(stream['endTime'])
-	            except ValueError as e:
+	        except ValueError as e:
                     sys.stderr.write('{:s}: {:s} ({:s})\n'.format(stream['stream'], stream['endTime'], e.message))
 	                sys.stderr.flush()
 	                continue
